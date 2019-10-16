@@ -5,6 +5,7 @@ const Users = require('../models/users-model');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
 const sessions = require('express-session');
+const jwt = require('jsonwebtoken');
 
 const sessionConfiguration = {
     name: "cookie",
@@ -39,8 +40,9 @@ router.post('/register', (req, res) => {
 })
 
 router.post('/login', validate, (req, res) => {
+    const token = generateToken(req.body)
     req.session.uid = req.body.id;
-    res.status(200).json({ message: `Welcome ${req.body.username}`})
+    res.status(200).json({ message: `Welcome ${req.body.username}`, token})
     
 })
 
@@ -81,6 +83,21 @@ function restricted (req, res, next) {
     } else {
         res.status(400).json({ message: 'Please Login'})
     }
+}
+
+function generateToken(user) {
+    const payload = {
+        username: user.username,
+        subject: user.id,
+    };
+
+    const secret = 'is it secret?';
+    
+    const options = {
+        expiresIn: '1h'
+    }
+
+    return jwt.sign(payload, secret, options)
 }
 
 module.exports = router
