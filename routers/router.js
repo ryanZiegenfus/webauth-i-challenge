@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 const sessions = require('express-session');
 const jwt = require('jsonwebtoken');
+const secrets = require('../config/secrets')
 
 const sessionConfiguration = {
     name: "cookie",
@@ -41,12 +42,12 @@ router.post('/register', (req, res) => {
 
 router.post('/login', validate, (req, res) => {
     const token = generateToken(req.body)
-    req.session.uid = req.body.id;
+    // req.session.uid = req.body.id;
     res.status(200).json({ message: `Welcome ${req.body.username}`, token})
     
 })
 
-router.get('/users', restricted, (req, res) => {
+router.get('/users', verifyToken, (req, res) => {
     Users.find()
     .then(users => {
         res.status(200).json({ users })
@@ -91,13 +92,33 @@ function generateToken(user) {
         subject: user.id,
     };
 
-    const secret = 'is it secret?';
+    const secret = secrets.jwtSecret;
     
     const options = {
         expiresIn: '1h'
     }
 
     return jwt.sign(payload, secret, options)
+}
+
+function verifyToken(req, res, next) {
+    const token = req.headers.authorization;
+    const secret = secrets.jwtSecret;
+
+    if (token) {
+        jwt.verify(token, secret, (err, decodedToken) => {
+            if(err) {
+                res.status(401).json({ message: 'Invalid credentials'})
+
+            } else {
+                req.username = decodedToken.username
+                next();
+            }
+        });
+    } else {
+        res.status(400).json({ message: 'No Token Provided'})
+    }
+
 }
 
 module.exports = router
